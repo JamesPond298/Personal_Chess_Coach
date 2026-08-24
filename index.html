@@ -1,0 +1,570 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Personal Chess Coach</title>
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#0d0f11;--panel:#181c20;--panel2:#111417;--line:#30363d;
+  --text:#f3f4f6;--muted:#aab2bd;--accent:#65a30d;--accent2:#3f6212;
+  --danger:#991b1b;--light:#ead7b1;--dark:#986846;--played:#f4d35eaa;--best:#5bd66faa;
+}
+*{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 system-ui,Segoe UI,Arial,sans-serif}
+button,input,select,textarea{font:inherit} button{cursor:pointer;background:#272d33;color:#fff;border:1px solid #46505a;border-radius:8px;padding:9px 12px}
+button.primary{background:var(--accent2);border-color:var(--accent)}button.danger{background:#7f1d1d;border-color:#b91c1c}button:disabled{opacity:.45}
+input,select,textarea{width:100%;background:#0d1013;color:#fff;border:1px solid var(--line);border-radius:8px;padding:9px}
+header{display:flex;justify-content:space-between;align-items:center;padding:15px 20px;border-bottom:1px solid var(--line);gap:12px}
+h1{font-size:20px;margin:0}h2{font-size:17px;margin:0 0 12px}h3{font-size:15px;margin:14px 0 8px}.small{font-size:12px;color:var(--muted)}
+.success{color:#86efac}.error{color:#fca5a5}.hidden{display:none}.row{display:flex;gap:8px}.row>*{flex:1}
+.tabs{max-width:1450px;margin:14px auto 0;padding:0 16px;display:flex;gap:8px}.tab.active{background:var(--accent2);border-color:var(--accent)}
+.mode{display:none}.mode.active{display:block}.app{max-width:1450px;margin:auto;padding:16px;display:grid;grid-template-columns:330px minmax(430px,700px) 1fr;gap:16px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;min-width:0}label{display:block;color:var(--muted);font-size:12px;margin:9px 0 5px}
+.games{max-height:545px;overflow:auto;margin-top:10px}.game{padding:10px;border:1px solid var(--line);border-radius:8px;margin:7px 0;cursor:pointer}.game:hover,.game.active{background:#24292f}
+.boardShell{width:min(100%,700px);margin:auto}.boardFrame{display:grid;grid-template-columns:20px minmax(0,1fr);grid-template-rows:minmax(0,1fr) 20px;gap:4px}
+.rankLabels,.fileLabels{font-size:11px;color:#9ca3af;font-weight:700;user-select:none}.rankLabels{grid-column:1;grid-row:1;display:grid;grid-template-rows:repeat(8,1fr);align-items:center;text-align:right}.fileLabels{grid-column:2;grid-row:2;display:grid;grid-template-columns:repeat(8,1fr);text-align:center}
+.board{grid-column:2;grid-row:1;width:100%;aspect-ratio:1;display:grid;grid-template-columns:repeat(8,minmax(0,1fr));grid-template-rows:repeat(8,minmax(0,1fr));border:2px solid #050607;border-radius:7px;overflow:hidden}
+.sq{position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden}.sq.light{background:var(--light)}.sq.dark{background:var(--dark)}
+.sq.played::after,.sq.best::after,.sq.selected::after{content:"";position:absolute;inset:0;pointer-events:none}.sq.played::after{background:var(--played)}.sq.best::after{box-shadow:inset 0 0 0 5px var(--best)}.sq.selected::after{box-shadow:inset 0 0 0 5px #62a8ff}
+.piece{width:86%;height:86%;z-index:2;position:relative;filter:drop-shadow(0 2px 1px rgba(0,0,0,.28));cursor:grab}
+.evalWrap{display:flex;gap:8px;align-items:center;margin:10px 0}.evalBar{height:14px;background:#f7f7f7;border-radius:7px;overflow:hidden;flex:1}.evalBlack{height:100%;background:#111}
+.moves{display:flex;flex-wrap:wrap;gap:5px;max-height:130px;overflow:auto;margin-top:10px}.move{padding:4px 7px;background:#252a30;border-radius:5px;cursor:pointer}.move.active{outline:2px solid #94a3b8}
+.summaryGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0}.metric{background:var(--panel2);padding:10px;border-radius:8px;text-align:center}.metric b{display:block;font-size:22px}
+.review{border:1px solid var(--line);border-radius:9px;padding:10px;margin:8px 0}.reviewHead{display:flex;justify-content:space-between;gap:8px;align-items:center}.tag{display:inline-block;border-radius:999px;padding:2px 7px;font-size:11px;font-weight:700}
+.Best,.Excellent{background:#166534}.Good{background:#365314}.Inaccuracy{background:#a16207}.Mistake{background:#c2410c}.Blunder{background:#991b1b}
+.moveCompare{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}.playedBox,.bestBox{border-radius:8px;padding:9px}.playedBox{background:#5b4b16}.bestBox{background:#174c28}.moveBig{font-size:18px;font-weight:800}
+.progressWrap{margin-top:12px}.progressTrack{height:14px;background:#090b0d;border:1px solid var(--line);border-radius:8px;overflow:hidden}.progressFill{height:100%;width:0;background:#65a30d;transition:width .2s}.progressText{display:flex;justify-content:space-between;margin-top:5px}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:50;display:none;padding:20px;overflow:auto}.overlay.open{display:block}.reportModal{max-width:1050px;margin:auto;background:#15191d;border:1px solid #3b434c;border-radius:14px;padding:18px}
+.reportHeader{display:flex;justify-content:space-between;gap:12px;align-items:center;position:sticky;top:0;background:#15191d;padding-bottom:10px;z-index:2}.reportTabs{display:flex;gap:7px;flex-wrap:wrap}.reportTab.active{background:var(--accent2);border-color:var(--accent)}.reportSection{display:none}.reportSection.active{display:block}
+.positionLayout{max-width:1300px;margin:auto;padding:16px;display:grid;grid-template-columns:minmax(430px,720px) 1fr;gap:16px}.candidate{padding:10px;border:1px solid var(--line);border-radius:8px;margin:8px 0}.candidate.bestCand{border-color:#65a30d;background:#152012}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.toolbar button{flex:0 0 auto}.legend{font-size:11px;color:var(--muted)}
+@media(max-width:1080px){.app{grid-template-columns:300px 1fr}.rightcol{grid-column:1/-1}.positionLayout{grid-template-columns:1fr}}
+@media(max-width:720px){header{flex-direction:column;align-items:flex-start}.app{grid-template-columns:1fr;padding:10px}.rightcol{grid-column:auto}.tabs{padding:0 10px}.moveCompare{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <div><h1>Personal Chess Coach</h1><div class="small">Beginner-first coaching, postgame review, and position study</div></div>
+  <div class="row" style="flex:0 0 auto"><span id="engineStatus" class="small" style="align-self:center">Checking Stockfish…</span><button class="danger" id="shutdownBtn">Shut Down Coach</button></div>
+</header>
+
+<div class="tabs">
+  <button class="tab active" data-mode="postgameMode">Postgame Review</button>
+  <button class="tab" data-mode="positionMode">Position Lab</button>
+  <button class="tab" data-mode="trainingMode">Train My Mistakes</button>
+  <button class="tab" data-mode="profileMode">Chess Profile</button>
+  <button class="tab" data-mode="progressMode">Progress</button>
+</div>
+
+<section id="postgameMode" class="mode active">
+<main class="app">
+<section class="panel">
+  <h2>1. Find a game</h2>
+  <label>Platform</label><select id="platform"><option value="chesscom">Chess.com</option><option value="lichess">Lichess</option></select>
+  <label>Username</label><input id="username" placeholder="Your username">
+  <button class="primary" id="loadGames" style="width:100%;margin-top:8px">Load recent games</button>
+  <div id="fetchMsg" class="small"></div><div id="games" class="games"></div>
+  <details style="margin-top:12px"><summary>Or paste a PGN</summary><textarea id="pgnInput" style="min-height:120px"></textarea><button id="usePgn">Use PGN</button></details>
+  <details style="margin-top:12px"><summary>Settings</summary>
+  <label>Stockfish executable</label><input id="stockfishPath">
+  <button id="saveStockfish">Save Stockfish path</button>
+  <label>Analysis depth</label><select id="depth"><option>12</option><option selected>15</option><option>18</option><option>20</option></select>
+  <hr style="border:0;border-top:1px solid var(--line);margin:14px 0">
+  <b>Learning Data</b>
+  <div id="dataLocation" class="small" style="margin:6px 0">Loading permanent storage location…</div>
+  <div class="toolbar">
+    <button id="backupData">Download Backup</button>
+    <button id="restoreData">Restore Backup</button>
+    <input id="restoreFile" type="file" accept=".json,application/json" class="hidden">
+  </div>
+  <div class="small">Your learning history now lives outside this app folder, so installing a new version will not erase it.</div>
+</details>
+</section>
+
+<section class="panel">
+  <h2>2. Review the board</h2><div id="gameTitle" class="small">Choose a game.</div>
+  <div class="evalWrap"><span>White</span><div class="evalBar"><div id="evalBlack" class="evalBlack" style="width:50%"></div></div><span id="evalText">0.00</span></div>
+  <div class="toolbar"><button id="flipBoard">Flip board</button><span id="orientationText" class="legend" style="align-self:center">White at bottom</span></div>
+  <div class="boardShell"><div class="boardFrame"><div class="rankLabels" id="rankLabels"></div><div id="board" class="board"></div><div class="fileLabels" id="fileLabels"></div></div></div>
+  <div class="legend" style="margin-top:8px">Yellow = the move you actually played · Green outline = Stockfish's preferred move</div>
+  <div class="row" style="margin-top:10px"><button id="prevMove">← Previous</button><button id="nextMove">Next →</button></div>
+  <div class="moves" id="moves"></div>
+  <button class="primary" id="analyze" style="width:100%;margin-top:14px" disabled>Analyze my game</button>
+  <div id="progressWrap" class="progressWrap hidden">
+    <div class="progressTrack"><div id="progressFill" class="progressFill"></div></div>
+    <div class="progressText small"><span id="progressMessage">Starting…</span><span id="progressPercent">0%</span></div>
+  </div>
+  <div id="analysisMsg" class="small"></div>
+</section>
+
+<section class="panel rightcol">
+  <h2>3. Coach summary</h2>
+  <details open>
+    <summary><b>Before every move</b></summary>
+    <div class="small" style="margin-top:8px">
+      <div>1. What did my opponent's last move change?</div>
+      <div>2. Is my king safe?</div>
+      <div>3. Is anything I own attacked or undefended?</div>
+      <div>4. Do I have a useful check?</div>
+      <div>5. Do I have a good capture?</div>
+      <div>6. Can I create a threat?</div>
+      <div>7. If nothing tactical is happening, which piece can I improve?</div>
+    </div>
+  </details><div id="emptyCoach" class="small">Analyze a game to generate a report.</div>
+  <div id="summaryPanel" class="hidden">
+    <div class="summaryGrid"><div class="metric"><b id="accuracy">—</b><span class="small">Est. accuracy</span></div><div class="metric"><b id="mistakes">—</b><span class="small">Mistakes</span></div><div class="metric"><b id="blunders">—</b><span class="small">Blunders</span></div></div>
+    <div id="themes"></div><h3>Critical moments</h3><div id="criticalCompact"></div>
+    <div class="toolbar"><button class="primary" id="openReport">Open Full Report</button><button id="downloadReport">Download Report</button></div>
+  </div>
+</section>
+</main>
+</section>
+
+<section id="positionMode" class="mode">
+<main class="positionLayout">
+<section class="panel">
+  <h2>Position Lab</h2>
+  <p class="small">Study any position. Click or drag pieces, or click Play move on a Stockfish candidate. Back steps through your explored line; Reset Branch returns to the original choice point.</p>
+  <label>FEN</label><input id="fenInput" value="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1">
+  <div class="toolbar"><button id="loadFen">Load FEN</button><button id="startFen">Starting position</button><button id="backLab">Back</button><button id="resetLab">Reset Branch</button><button id="flipLab">Flip board</button><button id="explainLab">Explain This Position</button></div>
+  <div class="boardShell"><div class="boardFrame"><div class="rankLabels" id="labRankLabels"></div><div id="labBoard" class="board"></div><div class="fileLabels" id="labFileLabels"></div></div></div>
+  <div class="small" id="labTurn" style="margin-top:8px">White to move</div>
+  <div class="row" style="margin-top:8px"><div><label>Depth</label><select id="labDepth"><option>12</option><option selected>15</option><option>18</option><option>20</option></select></div><div><label>Candidate moves</label><select id="labMulti"><option>1</option><option selected>3</option><option>5</option></select></div></div>
+  <button class="primary" id="analyzePosition" style="width:100%;margin-top:10px">Analyze Position</button><div id="labMsg" class="small"></div>
+</section>
+<section class="panel">
+  <h2>Position Coach</h2>
+  <div class="evalWrap"><span>White</span><div class="evalBar"><div id="labEvalBlack" class="evalBlack" style="width:50%"></div></div><span id="labEvalText">0.00</span></div>
+  <div id="labCoach" class="small">Move pieces or load a FEN, then analyze.</div><div id="positionLesson" class="hidden" style="margin-top:12px"></div><h3>Candidate moves</h3><div id="labCandidates"></div>
+</section>
+</main>
+</section>
+
+
+<section id="trainingMode" class="mode">
+<main class="positionLayout">
+<section class="panel">
+  <h2>Train My Mistakes</h2>
+  <p class="small">These positions come from your own reviewed games. Try the move before revealing Stockfish's answer.</p>
+  <div id="trainingEmpty" class="small">Loading your next due position…</div>
+  <div id="trainingArea" class="hidden">
+    <div class="row" style="margin-bottom:8px">
+      <div><b id="trainingTitle">Your move</b><div id="trainingMeta" class="small"></div></div>
+      <button id="trainingFlip">Flip board</button>
+    </div>
+    <div class="boardShell"><div class="boardFrame"><div class="rankLabels" id="trainingRankLabels"></div><div id="trainingBoard" class="board"></div><div class="fileLabels" id="trainingFileLabels"></div></div></div>
+    <div id="trainingMsg" class="small" style="margin-top:8px">Find a better move than the one you originally played.</div>
+    <div class="toolbar">
+      <button id="revealTraining">Reveal answer</button>
+      <button id="nextTraining">Next due position</button>
+    </div>
+  </div>
+</section>
+<section class="panel">
+  <h2>Coach Challenge</h2>
+  <div id="challengeResult" class="small">Make a move on the board. Your choice will be compared with Stockfish's preferred move.</div>
+  <div id="thoughtBox" class="hidden">
+    <h3>What were you thinking?</h3>
+    <label>Reason</label>
+    <select id="thoughtTag">
+      <option value="">Choose one…</option>
+      <option>Didn't see opponent's reply</option>
+      <option>Calculation error</option>
+      <option>Didn't know what to do</option>
+      <option>Thought this was winning</option>
+      <option>Played too quickly</option>
+      <option>Time pressure</option>
+      <option>Opening knowledge</option>
+      <option>Other</option>
+    </select>
+    <label>Optional note</label>
+    <textarea id="thoughtText" style="min-height:100px" placeholder="What were you trying to accomplish?"></textarea>
+    <button id="saveThought">Save reflection</button>
+  </div>
+</section>
+</main>
+</section>
+
+<section id="profileMode" class="mode">
+<main class="positionLayout">
+<section class="panel">
+  <h2>Your Chess Profile</h2>
+  <div class="summaryGrid">
+    <div class="metric"><b id="profileGames">0</b><span class="small">Games reviewed</span></div>
+    <div class="metric"><b id="profileMistakes">0</b><span class="small">Mistakes logged</span></div>
+    <div class="metric"><b id="profileDue">0</b><span class="small">Training positions due</span></div>
+  </div>
+  <h3>Recurring weaknesses</h3>
+  <div id="profileCategories" class="small">No data yet.</div>
+  <h3>Thinking-process patterns</h3>
+  <div id="profileThoughts" class="small">Add reflections to mistakes to build this section.</div>
+</section>
+<section class="panel">
+  <h2>Mistake Journal</h2>
+  <div id="mistakeJournal" class="small">No reviewed mistakes yet.</div>
+</section>
+</main>
+</section>
+
+
+<section id="progressMode" class="mode">
+<main class="positionLayout">
+<section class="panel">
+  <h2>Progress Dashboard</h2>
+  <div id="progressMilestone" class="candidate">Loading progress…</div>
+  <div class="summaryGrid">
+    <div class="metric"><b id="pdGames">0</b><span class="small">Games reviewed</span></div>
+    <div class="metric"><b id="pdRetention">0%</b><span class="small">Repeat retention</span></div>
+    <div class="metric"><b id="pdTrainingAccuracy">0%</b><span class="small">Training accuracy</span></div>
+  </div>
+  <h3>Baseline vs. recent 10 games</h3>
+  <div id="baselineCompare"></div>
+  <h3>Current training priority</h3>
+  <div id="currentPriority" class="candidate"></div>
+  <h3>Understanding feedback</h3>
+  <div id="understandingStats" class="small"></div>
+</section>
+<section class="panel">
+  <h2>Concept Mastery</h2>
+  <p class="small">These scores come from your actual training attempts and spaced-repetition progress, not arbitrary engine evaluations.</p>
+  <div id="masteryList">No training data yet.</div>
+  <h3>Checkpoint Roadmap</h3>
+  <div class="candidate"><b>10 games</b><div class="small">Establish your baseline and identify your top recurring weaknesses.</div></div>
+  <div class="candidate"><b>25 games</b><div class="small">Look for better recognition of repeated mistakes and improved Coach Challenge results.</div></div>
+  <div class="candidate"><b>50 games</b><div class="small">Basic blunders and one-move oversights should begin declining.</div></div>
+  <div class="candidate"><b>100 games</b><div class="small">Test whether concepts transfer into new positions you have never trained before.</div></div>
+</section>
+</main>
+</section>
+
+<div id="reportOverlay" class="overlay">
+<div class="reportModal">
+  <div class="reportHeader"><div><h2 style="margin:0">Full Coach Report</h2><div id="reportGameTitle" class="small"></div></div><div class="toolbar"><button id="downloadReport2">Download</button><button id="closeReport">Close</button></div></div>
+  <div class="reportTabs"><button class="reportTab active" data-section="reportSummary">Summary</button><button class="reportTab" data-section="reportCritical">Critical Moments</button><button class="reportTab" data-section="reportMoves">Move-by-Move</button><button class="reportTab" data-section="reportPlan">Practice Plan</button></div>
+  <section id="reportSummary" class="reportSection active"></section><section id="reportCritical" class="reportSection"></section><section id="reportMoves" class="reportSection"></section><section id="reportPlan" class="reportSection"></section>
+</div></div>
+
+<script>
+const $=s=>document.querySelector(s);
+let currentPGN="",parsed=null,reviewData=null,ply=0,orientation="white",userColor="white";
+let labFen="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",labBaseFen=labFen,labOrientation="white",labData=null,labHistory=[],selectedLabSquare=null;
+let trainingItem=null,trainingFen="",trainingOrientation="white",trainingSelected=null,trainingRevealed=false;
+
+function svgPiece(c){
+  const white=c===c.toUpperCase(), t=c.toUpperCase();
+  const fill=white?"#ffffff":"#111111";
+  const stroke=white?"#111111":"#eeeeee";
+  const inner=white?"#111111":"#eeeeee";
+  const common=`fill="${fill}" stroke="${stroke}" stroke-width="5" stroke-linejoin="round"`;
+  const shapes={
+    K:`<path d="M50 9v21M39 20h22"/><path d="M35 35h30l8 15-8 16H35l-8-16z"/><path d="M31 66h38l7 15H24z"/><path d="M20 81h60v10H20z"/>`,
+    Q:`<circle cx="18" cy="20" r="5"/><circle cx="38" cy="13" r="5"/><circle cx="62" cy="13" r="5"/><circle cx="82" cy="20" r="5"/><path d="M18 26l12 38h40l12-38-20 20-12-28-12 28z"/><path d="M28 64h44l6 18H22z"/><path d="M20 82h60v9H20z"/>`,
+    R:`<path d="M24 16h14v12h24V16h14v24H24z"/><path d="M31 40h38l-4 38H35z"/><path d="M25 78h50v13H25z"/>`,
+    B:`<path d="M50 12c12 12 18 22 18 33 0 12-8 20-18 20s-18-8-18-20c0-11 6-21 18-33z"/><path d="M43 29l15 18" stroke="${inner}"/><path d="M35 64h30l8 16H27z"/><path d="M22 80h56v11H22z"/>`,
+    N:`<path d="M29 79c2-26 8-43 24-55l-5-12c18 2 30 15 31 35-12-8-22-7-29 2 12 4 18 13 17 30z"/><circle cx="61" cy="31" r="3" fill="${inner}" stroke="none"/><path d="M23 79h54v12H23z"/>`,
+    P:`<circle cx="50" cy="28" r="14"/><path d="M38 42h24l7 28H31z"/><path d="M25 70h50v20H25z"/>`
+  };
+  return `<svg viewBox="0 0 100 100"><g ${common}>${shapes[t]}</g></svg>`;
+}
+function parseFen(f){const rows=f.split(" ")[0].split("/"),o=[];for(const row of rows){const a=[];for(const c of row){if(/\d/.test(c))for(let i=0;i<+c;i++)a.push("");else a.push(c)}o.push(a)}return o}
+function coordData(ori){return{files:ori==="white"?["a","b","c","d","e","f","g","h"]:["h","g","f","e","d","c","b","a"],ranks:ori==="white"?[8,7,6,5,4,3,2,1]:[1,2,3,4,5,6,7,8]}}
+function setCoords(ori,fileEl,rankEl){const c=coordData(ori);fileEl.innerHTML=c.files.map(x=>`<span>${x}</span>`).join("");rankEl.innerHTML=c.ranks.map(x=>`<span>${x}</span>`).join("")}
+function uciSquares(u){return(!u||u.length<4)?[]:[u.slice(0,2),u.slice(2,4)]}
+function drawBoard(fen,el,ori,playedUci="",bestUci="",interactive=false){
+  const m=parseFen(fen);el.innerHTML="";const played=new Set(uciSquares(playedUci)),best=new Set(uciSquares(bestUci));const list=[];
+  if(ori==="white"){for(let r=0;r<8;r++)for(let c=0;c<8;c++)list.push([r,c])}else{for(let r=7;r>=0;r--)for(let c=7;c>=0;c--)list.push([r,c])}
+  for(const[r,c]of list){const square="abcdefgh"[c]+(8-r),s=document.createElement("div");s.className="sq "+((r+c)%2?"dark":"light");s.dataset.square=square;
+    if(played.has(square))s.classList.add("played");if(best.has(square))s.classList.add("best");if(interactive&&selectedLabSquare===square)s.classList.add("selected");
+    if(m[r][c]){const p=document.createElement("div");p.className="piece";p.innerHTML=svgPiece(m[r][c]);if(interactive){p.draggable=true;p.ondragstart=e=>e.dataTransfer.setData("text/plain",square)}s.appendChild(p)}
+    if(interactive){s.onclick=()=>labSquareClick(square);s.ondragover=e=>e.preventDefault();s.ondrop=e=>{e.preventDefault();const from=e.dataTransfer.getData("text/plain");if(from)makeLabMove(from,square)}} el.appendChild(s)
+  }
+}
+function setEval(v,textEl,blackEl){v=Number(v)||0;textEl.textContent=(v>0?"+":"")+v.toFixed(2);const wp=50+45*Math.tanh(v/4);blackEl.style.width=(100-wp)+"%"}
+async function api(url,opts={}){const r=await fetch(url,opts);let d;try{d=await r.json()}catch{d={error:"Unexpected server response"}}if(!r.ok)throw new Error(d.error||"Request failed");return d}
+async function checkStatus(){try{const s=await api("/api/status");$("#engineStatus").textContent=s.engineBusy?"Stockfish analyzing…":s.stockfishFound?"Stockfish configured · idle":"Stockfish not configured";$("#engineStatus").className=s.stockfishFound?"small success":"small error";if(s.stockfishPath)$("#stockfishPath").value=s.stockfishPath;if($("#dataLocation"))$("#dataLocation").textContent=`Permanent data: ${s.dataDirectory}`}catch{}}
+
+function reviewForPly(n){return reviewData?.reviews?.find(r=>r.ply===n)}
+function showPly(n){if(!parsed)return;ply=Math.max(0,Math.min(n,parsed.positions.length-1));const rev=reviewForPly(ply);const best=rev&&["Inaccuracy","Mistake","Blunder"].includes(rev.classification)?rev.bestUci:"";drawBoard(parsed.positions[ply].fen,$("#board"),orientation,parsed.positions[ply].uci,best);setCoords(orientation,$("#fileLabels"),$("#rankLabels"));$("#orientationText").textContent=(orientation==="white"?"White":"Black")+" at bottom";document.querySelectorAll(".move").forEach(x=>x.classList.toggle("active",+x.dataset.ply===ply));setEval(rev?rev.evalAfter:0,$("#evalText"),$("#evalBlack"))}
+function determineUserColor(h){const u=$("#username").value.trim().toLowerCase();return u&&(h.Black||"").toLowerCase()===u?"black":"white"}
+async function selectPgn(pgn){currentPGN=pgn;reviewData=null;$("#summaryPanel").classList.add("hidden");$("#emptyCoach").classList.remove("hidden");parsed=await api("/api/pgn/parse",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({pgn})});userColor=determineUserColor(parsed.headers);orientation=userColor;$("#moves").innerHTML=parsed.moves.map(m=>`<span class="move" data-ply="${m.ply}">${Math.ceil(m.ply/2)}${m.ply%2?".":"..."} ${m.san}</span>`).join("");document.querySelectorAll(".move").forEach(x=>x.onclick=()=>showPly(+x.dataset.ply));$("#gameTitle").textContent=`${parsed.headers.White||"White"} vs ${parsed.headers.Black||"Black"} — ${parsed.headers.Result||""}`;$("#analyze").disabled=false;showPly(0)}
+$("#loadGames").onclick=async()=>{const u=$("#username").value.trim(),p=$("#platform").value;if(!u)return;$("#fetchMsg").textContent="Loading…";$("#games").innerHTML="";try{const gs=await api(`/api/games/${p}/${encodeURIComponent(u)}?limit=30`);$("#fetchMsg").textContent=`Found ${gs.length} recent games.`;gs.forEach(g=>{const e=document.createElement("div");e.className="game";e.innerHTML=`<b>${g.white} (${g.whiteElo||"?"}) vs ${g.black} (${g.blackElo||"?"})</b><div class="small">${g.result} · ${g.date||""} · ${g.timeClass||g.timeControl||""}</div>`;e.onclick=()=>{document.querySelectorAll(".game").forEach(x=>x.classList.remove("active"));e.classList.add("active");selectPgn(g.pgn)};$("#games").appendChild(e)})}catch(e){$("#fetchMsg").textContent=e.message}}
+$("#usePgn").onclick=()=>selectPgn($("#pgnInput").value);$("#prevMove").onclick=()=>showPly(ply-1);$("#nextMove").onclick=()=>showPly(ply+1);$("#flipBoard").onclick=()=>{orientation=orientation==="white"?"black":"white";showPly(ply)}
+$("#saveStockfish").onclick=async()=>{try{await api("/api/settings/stockfish",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({path:$("#stockfishPath").value})});await checkStatus();alert("Stockfish path saved.")}catch(e){alert(e.message)}}
+
+async function pollAnalysis(jobId){
+  while(true){
+    const s=await api(`/api/analyze/status/${jobId}`);$("#progressFill").style.width=s.percent+"%";$("#progressPercent").textContent=s.percent+"%";$("#progressMessage").textContent=s.message||"Analyzing…";
+    if(s.status==="complete")return s.result;if(s.status==="error")throw new Error(s.error||"Analysis failed.");await new Promise(r=>setTimeout(r,500));
+  }
+}
+$("#analyze").onclick=async()=>{if(!currentPGN)return;$("#analyze").disabled=true;$("#progressWrap").classList.remove("hidden");$("#progressFill").style.width="0%";$("#progressPercent").textContent="0%";$("#analysisMsg").textContent="";try{const start=await api("/api/analyze/start",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({pgn:currentPGN,username:$("#username").value.trim(),depth:+$("#depth").value})});reviewData=await pollAnalysis(start.jobId);renderSummary();showPly(ply);$("#analysisMsg").textContent="Analysis complete."}catch(e){$("#analysisMsg").textContent=e.message;$("#analysisMsg").className="small error"}finally{$("#analyze").disabled=false;await checkStatus()}}
+
+function reviewCard(r){
+  const pt=r.positionTeaching||{};
+  const coach=r.coach||{};
+  const pvTeach=(r.pvTeaching||[]).map(x=>`<div class="small"><b>${x.san}</b> — ${x.why}</div>`).join("");
+  return `<div class="review">
+    <div class="reviewHead">
+      <div><span class="tag ${r.classification}">${r.classification}</span> <b>${r.moveNumber}${r.color==="white"?".":"..."} ${r.playedSan}</b></div>
+      <button onclick="sendReviewToLab(${r.ply})">Study position</button>
+    </div>
+    <div class="moveCompare">
+      <div class="playedBox"><div class="small">YOU PLAYED</div><div class="moveBig">${r.playedSan}</div></div>
+      <div class="bestBox"><div class="small">STOCKFISH PREFERRED</div><div class="moveBig">${r.bestSan||"—"}</div></div>
+    </div>
+    <div><b>Why Stockfish prefers it</b><br>${coach.whyBest||coach.explanation||""}</div>
+    <div style="margin-top:8px"><b>What the better move accomplishes</b><br>${coach.accomplishes||""}</div>
+    <div style="margin-top:8px"><b>What you should try to do next</b><br>${coach.nextPlan||""}</div>
+    <div style="margin-top:8px"><b>Concept to remember:</b> ${coach.concept||"General"}</div>
+    <div class="small" style="margin-top:8px"><b>Position snapshot:</b> ${pt.material||""} ${pt.development||""} ${pt.center||""}</div>
+    <div class="small" style="margin-top:8px"><b>Question for you:</b> ${coach.question||""}</div>
+    <div style="margin-top:10px"><div class="small"><b>Did this explanation make sense?</b></div>
+      <div class="toolbar">
+        <button onclick="rateUnderstanding('I understand this','${(coach.concept||"General").replace(/'/g,"")}')">I understand this</button>
+        <button onclick="rateUnderstanding('Sort of','${(coach.concept||"General").replace(/'/g,"")}')">Sort of</button>
+        <button onclick="rateUnderstanding('I still don\\'t get it','${(coach.concept||"General").replace(/'/g,"")}')">I still don't get it</button>
+      </div>
+    </div>
+    ${pvTeach?`<details style="margin-top:8px"><summary>Explain Stockfish's continuation</summary>${pvTeach}</details>`:""}
+  </div>`
+}
+window.sendReviewToLab=function(plyNum){const r=reviewData?.reviews?.find(x=>x.ply===plyNum);if(!r)return;labHistory=[];labFen=r.fenBefore;labBaseFen=labFen;$("#fenInput").value=labFen;labData=null;selectedLabSquare=null;drawLab();document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));document.querySelectorAll(".mode").forEach(x=>x.classList.remove("active"));document.querySelector('[data-mode="positionMode"]').classList.add("active");$("#positionMode").classList.add("active");$("#labCoach").innerHTML=`<b>Imported from game review.</b><br>You played <b>${r.playedSan}</b>. Stockfish preferred <b>${r.bestSan||"—"}</b>. Move pieces on the board to explore alternatives.`;window.scrollTo({top:0,behavior:"smooth"})}
+function renderSummary(){const d=reviewData;$("#emptyCoach").classList.add("hidden");$("#summaryPanel").classList.remove("hidden");$("#accuracy").textContent=d.accuracyEstimate+"%";$("#mistakes").textContent=d.counts.Mistake;$("#blunders").textContent=d.counts.Blunder;$("#themes").innerHTML="<h3>Practice priorities</h3>"+d.themes.map(t=>`<p>${t}</p>`).join("");$("#criticalCompact").innerHTML=d.criticalMoments.slice(0,3).map(reviewCard).join("");buildFullReport()}
+function buildFullReport(){const d=reviewData,h=d.headers;$("#reportGameTitle").textContent=`${h.White||"White"} vs ${h.Black||"Black"} — ${h.Result||""}`;$("#reportSummary").innerHTML=`<div class="summaryGrid"><div class="metric"><b>${d.accuracyEstimate}%</b><span class="small">Estimated accuracy</span></div><div class="metric"><b>${d.counts.Mistake}</b><span class="small">Mistakes</span></div><div class="metric"><b>${d.counts.Blunder}</b><span class="small">Blunders</span></div></div>${d.themes.map(t=>`<p>${t}</p>`).join("")}`;$("#reportCritical").innerHTML=d.criticalMoments.map(reviewCard).join("");$("#reportMoves").innerHTML=d.reviews.map(reviewCard).join("");$("#reportPlan").innerHTML=`<h3>Next session</h3>${d.themes.map((t,i)=>`<p><b>${i+1}.</b> ${t}</p>`).join("")}<p>Revisit your three biggest mistakes in Position Lab and try two candidate moves before checking Stockfish.</p>`}
+function reportHtml(){const d=reviewData,h=d.headers,esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));return `<!doctype html><meta charset="utf-8"><title>Chess Coach Report</title><style>body{font:15px/1.5 system-ui;max-width:900px;margin:40px auto;padding:0 20px}.box{border:1px solid #ccc;border-radius:8px;padding:12px;margin:12px 0}.compare{display:grid;grid-template-columns:1fr 1fr;gap:10px}</style><h1>Personal Chess Coach Report</h1><p>${esc(h.White)} vs ${esc(h.Black)} — ${esc(h.Result)}</p><p>Estimated accuracy: <b>${d.accuracyEstimate}%</b> · Mistakes: <b>${d.counts.Mistake}</b> · Blunders: <b>${d.counts.Blunder}</b></p><h2>Practice priorities</h2>${d.themes.map(t=>`<p>${esc(t)}</p>`).join("")}<h2>Critical moments</h2>${d.criticalMoments.map(r=>`<div class="box"><b>${esc(r.classification)} — ${r.moveNumber}${r.color==="white"?".":"..."} ${esc(r.playedSan)}</b><div class="compare"><p>You played: <b>${esc(r.playedSan)}</b></p><p>Stockfish preferred: <b>${esc(r.bestSan)}</b></p></div><p>${esc(r.coach.explanation)}</p><p>Line: ${esc(r.pv.join(" "))}</p></div>`).join("")}<h2>Move-by-move</h2>${d.reviews.map(r=>`<div class="box"><b>${esc(r.classification)} — ${esc(r.playedSan)}</b><p>Stockfish preferred: <b>${esc(r.bestSan)}</b></p><p>${esc(r.coach.explanation)}</p></div>`).join("")}`}
+function downloadReport(){if(!reviewData)return;const blob=new Blob([reportHtml()],{type:"text/html"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`chess-coach-report-${Date.now()}.html`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+$("#openReport").onclick=()=>$("#reportOverlay").classList.add("open");$("#closeReport").onclick=()=>$("#reportOverlay").classList.remove("open");$("#downloadReport").onclick=downloadReport;$("#downloadReport2").onclick=downloadReport;
+document.querySelectorAll(".reportTab").forEach(b=>b.onclick=()=>{document.querySelectorAll(".reportTab").forEach(x=>x.classList.remove("active"));document.querySelectorAll(".reportSection").forEach(x=>x.classList.remove("active"));b.classList.add("active");$("#"+b.dataset.section).classList.add("active")})
+document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));document.querySelectorAll(".mode").forEach(x=>x.classList.remove("active"));b.classList.add("active");$("#"+b.dataset.mode).classList.add("active");if(b.dataset.mode==="trainingMode")loadTraining();if(b.dataset.mode==="profileMode")loadProfile();if(b.dataset.mode==="progressMode")loadProgress()})
+
+function drawLab(){drawBoard(labFen,$("#labBoard"),labOrientation,"",labData?.best?.moveUci||"",true);setCoords(labOrientation,$("#labFileLabels"),$("#labRankLabels"));const parts=labFen.split(" ");$("#labTurn").textContent=(parts[1]==="b"?"Black":"White")+" to move"}
+async function makeLabMove(from,to){try{const result=await api("/api/position/move",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({fen:labFen,from,to})});labHistory.push(labFen);labFen=result.fen;$("#fenInput").value=labFen;selectedLabSquare=null;labData=null;$("#labCandidates").innerHTML="";$("#labCoach").textContent=`Played ${result.san}. Analyze the new position when ready.`;drawLab()}catch(e){$("#labMsg").textContent=e.message;selectedLabSquare=null;drawLab()}}
+function labSquareClick(square){if(!selectedLabSquare){selectedLabSquare=square;drawLab();return}if(selectedLabSquare===square){selectedLabSquare=null;drawLab();return}makeLabMove(selectedLabSquare,square)}
+$("#loadFen").onclick=()=>{labHistory=[];labFen=$("#fenInput").value.trim();labBaseFen=labFen;labData=null;selectedLabSquare=null;$("#labCandidates").innerHTML="";drawLab()};$("#startFen").onclick=()=>{labHistory=[];labFen="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";labBaseFen=labFen;$("#fenInput").value=labFen;labData=null;selectedLabSquare=null;$("#labCandidates").innerHTML="";drawLab()};$("#backLab").onclick=()=>{if(!labHistory.length)return;labFen=labHistory.pop();$("#fenInput").value=labFen;labData=null;selectedLabSquare=null;$("#labCandidates").innerHTML="";$("#labCoach").textContent="Stepped back one move. Analyze again when ready.";drawLab()};$("#resetLab").onclick=()=>{labHistory=[];labFen=labBaseFen;$("#fenInput").value=labFen;labData=null;selectedLabSquare=null;$("#labCandidates").innerHTML="";$("#labCoach").textContent="Returned to the original branch choice point.";drawLab()};$("#flipLab").onclick=()=>{labOrientation=labOrientation==="white"?"black":"white";drawLab()}
+window.playCandidateMove=async function(uci){
+  if(!uci||uci.length<4)return;
+  const from=uci.slice(0,2),to=uci.slice(2,4);
+  await makeLabMove(from,to);
+};
+
+
+$("#explainLab").onclick=async()=>{
+  try{
+    const d=await api("/api/explain-position",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({fen:labFen})});
+    const s=d.summary;
+    $("#positionLesson").classList.remove("hidden");
+    $("#positionLesson").innerHTML=`
+      <h3>What is happening in this position?</h3>
+      <div class="candidate"><b>Material</b><div class="small">${s.material}</div></div>
+      <div class="candidate"><b>Development</b><div class="small">${s.development}</div></div>
+      <div class="candidate"><b>Center</b><div class="small">${s.center}</div></div>
+      <div class="candidate"><b>King safety</b><div class="small">White: ${s.whiteKingSafety}<br>Black: ${s.blackKingSafety}</div></div>
+      <div class="candidate"><b>Immediate safety check</b><div class="small">${s.threats}</div></div>
+      <h3>Beginner checklist</h3>
+      ${d.checklist.map(x=>`<div class="small">• ${x}</div>`).join("")}
+    `;
+  }catch(e){$("#labMsg").textContent=e.message}
+};
+
+$("#analyzePosition").onclick=async()=>{$("#analyzePosition").disabled=true;$("#labMsg").textContent="Analyzing…";try{labData=await api("/api/analyze-position",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({fen:labFen,depth:+$("#labDepth").value,multipv:+$("#labMulti").value})});setEval(labData.best?.evalWhite||0,$("#labEvalText"),$("#labEvalBlack"));const teach=labData.coach.bestMoveTeaching||{};
+$("#labCoach").innerHTML=`
+  <p><b>What Stockfish sees:</b> ${labData.coach.explanation}</p>
+  ${labData.best?`<p><b>Best move:</b> ${labData.best.moveSan}</p>`:""}
+  ${teach.why?`<p><b>Why this move:</b> ${teach.why}</p>`:""}
+  ${teach.accomplishes?`<p><b>What it accomplishes:</b> ${teach.accomplishes}</p>`:""}
+  ${teach.nextPlan?`<p><b>What to do next:</b> ${teach.nextPlan}</p>`:""}
+  ${teach.concept?`<p><b>Concept:</b> ${teach.concept}</p>`:""}
+  ${teach.question?`<p><b>Question for you:</b> ${teach.question}</p>`:""}
+`;$("#labCandidates").innerHTML=labData.candidates.map((c,i)=>`<div class="candidate ${i===0?"bestCand":""}"><div class="reviewHead"><div><b>${i===0?"Best move to study: ":"Alternative: "}${c.moveSan||"—"}</b> <span class="small">eval ${c.evalWhite>0?"+":""}${c.evalWhite}</span></div><button onclick="playCandidateMove('${c.moveUci}')">Play move</button></div><div class="small">${c.pv.join(" ")}</div></div>`).join("");drawLab();$("#labMsg").textContent="Analysis complete."}catch(e){$("#labMsg").textContent=e.message}finally{$("#analyzePosition").disabled=false;await checkStatus()}}
+
+
+async function loadProfile(){
+  try{
+    const p=await api("/api/learning/profile");
+    $("#profileGames").textContent=p.gamesReviewed;
+    $("#profileMistakes").textContent=p.mistakesLogged;
+    $("#profileDue").textContent=p.dueTraining;
+    $("#profileCategories").innerHTML=p.categories.length?p.categories.map(x=>`<div class="candidate"><b>${x.name}</b><span class="small"> ${x.count} occurrence${x.count===1?"":"s"}</span></div>`).join(""):"No recurring weaknesses recorded yet.";
+    $("#profileThoughts").innerHTML=p.thoughtPatterns.length?p.thoughtPatterns.map(x=>`<div class="candidate"><b>${x.name}</b><span class="small"> ${x.count}</span></div>`).join(""):"Add reflections to mistakes to build this section.";
+  }catch(e){}
+  try{
+    const items=await api("/api/learning/mistakes");
+    $("#mistakeJournal").innerHTML=items.length?items.slice(0,50).map(m=>`<div class="review"><div class="reviewHead"><div><span class="tag ${m.classification}">${m.classification}</span> <b>Move ${m.moveNumber}: ${m.playedSan}</b></div><button onclick="studyJournal('${m.id}')">Study</button></div><div class="moveCompare"><div class="playedBox"><div class="small">YOU PLAYED</div><div class="moveBig">${m.playedSan}</div></div><div class="bestBox"><div class="small">BETTER MOVE</div><div class="moveBig">${m.bestSan||"—"}</div></div></div><div class="small">Category: ${m.category}</div>${m.thoughtTag?`<div class="small"><b>Your note:</b> ${m.thoughtTag}${m.thought?` — ${m.thought}`:""}</div>`:""}</div>`).join(""):"No reviewed mistakes yet.";
+    window._journalItems=items;
+  }catch(e){}
+}
+window.studyJournal=function(id){
+  const m=(window._journalItems||[]).find(x=>x.id===id);
+  if(!m)return;
+  labHistory=[];labFen=m.fenBefore;labBaseFen=labFen;$("#fenInput").value=labFen;labData=null;selectedLabSquare=null;drawLab();
+  document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
+  document.querySelectorAll(".mode").forEach(x=>x.classList.remove("active"));
+  document.querySelector('[data-mode="positionMode"]').classList.add("active");
+  $("#positionMode").classList.add("active");
+  $("#labCoach").innerHTML=`<b>Mistake Journal position.</b><br>You played <b>${m.playedSan}</b>. Try alternatives, then analyze.`;
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+
+function drawTraining(){
+  if(!trainingItem)return;
+  drawBoard(trainingFen,$("#trainingBoard"),trainingOrientation,"",trainingRevealed?trainingItem.bestUci:"",true);
+  setCoords(trainingOrientation,$("#trainingFileLabels"),$("#trainingRankLabels"));
+  // Training uses its own click handling, overriding generic lab handlers.
+  document.querySelectorAll("#trainingBoard .sq").forEach(s=>{
+    s.onclick=()=>trainingSquareClick(s.dataset.square);
+    s.ondragover=e=>e.preventDefault();
+    s.ondrop=e=>{
+      e.preventDefault();
+      const from=e.dataTransfer.getData("text/plain");
+      if(from)submitTrainingMove(from,s.dataset.square);
+    };
+    const p=s.querySelector(".piece");
+    if(p){
+      p.draggable=true;
+      p.ondragstart=e=>e.dataTransfer.setData("text/plain",s.dataset.square);
+    }
+  });
+  if(trainingSelected){
+    const sq=document.querySelector(`#trainingBoard .sq[data-square="${trainingSelected}"]`);
+    if(sq)sq.classList.add("selected");
+  }
+}
+function trainingSquareClick(square){
+  if(trainingRevealed)return;
+  if(!trainingSelected){trainingSelected=square;drawTraining();return;}
+  if(trainingSelected===square){trainingSelected=null;drawTraining();return;}
+  submitTrainingMove(trainingSelected,square);
+}
+async function submitTrainingMove(from,to){
+  if(trainingRevealed||!trainingItem)return;
+  try{
+    const r=await api("/api/position/move",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({fen:trainingFen,from,to})});
+    const attempted=r.uci;
+    const correct=attempted===trainingItem.bestUci;
+    trainingRevealed=true;
+    trainingSelected=null;
+    $("#challengeResult").innerHTML=correct
+      ? `<h3>You found it.</h3><div class="moveCompare"><div class="playedBox"><div class="small">ORIGINAL GAME</div><div class="moveBig">${trainingItem.playedSan}</div></div><div class="bestBox"><div class="small">YOUR RETRY / STOCKFISH</div><div class="moveBig">${r.san}</div></div></div>`
+      : `<h3>Good attempt. Compare the ideas.</h3><div class="moveCompare"><div class="playedBox"><div class="small">YOUR RETRY</div><div class="moveBig">${r.san}</div></div><div class="bestBox"><div class="small">STOCKFISH PREFERRED</div><div class="moveBig">${trainingItem.bestSan||"—"}</div></div></div><p>${trainingItem.coach?.explanation||""}</p>`;
+    $("#thoughtBox").classList.remove("hidden");
+    await api("/api/training/grade",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({mistakeId:trainingItem.mistakeId,attemptedUci:attempted,correct})});
+    drawTraining();
+    loadProfile();
+  }catch(e){
+    $("#trainingMsg").textContent=e.message;
+  }
+}
+async function loadTraining(){
+  $("#trainingEmpty").textContent="Loading your next due position…";
+  $("#trainingArea").classList.add("hidden");
+  $("#thoughtBox").classList.add("hidden");
+  $("#challengeResult").textContent="Make a move on the board. Your choice will be compared with Stockfish's preferred move.";
+  try{
+    const d=await api("/api/training/next");
+    trainingItem=d.item;
+    trainingRevealed=false;trainingSelected=null;
+    if(!trainingItem){
+      $("#trainingEmpty").textContent="Nothing is due right now. Review more games or come back after the next spaced-repetition interval.";
+      return;
+    }
+    trainingFen=trainingItem.fen;
+    trainingOrientation=trainingItem.color==="black"?"black":"white";
+    $("#trainingEmpty").textContent="";
+    $("#trainingArea").classList.remove("hidden");
+    $("#trainingTitle").textContent=`Move ${trainingItem.moveNumber}: find a better move`;
+    $("#trainingMeta").textContent=`${trainingItem.category} · originally ${trainingItem.classification}`;
+    $("#trainingMsg").textContent="Try to improve on your original move without revealing the answer.";
+    drawTraining();
+  }catch(e){
+    $("#trainingEmpty").textContent=e.message;
+  }
+}
+$("#trainingFlip").onclick=()=>{trainingOrientation=trainingOrientation==="white"?"black":"white";drawTraining()};
+$("#revealTraining").onclick=()=>{
+  if(!trainingItem)return;
+  trainingRevealed=true;
+  $("#challengeResult").innerHTML=`<h3>Answer revealed</h3><div class="moveCompare"><div class="playedBox"><div class="small">YOU PLAYED IN GAME</div><div class="moveBig">${trainingItem.playedSan}</div></div><div class="bestBox"><div class="small">STOCKFISH PREFERRED</div><div class="moveBig">${trainingItem.bestSan||"—"}</div></div></div><p>${trainingItem.coach?.explanation||""}</p>`;
+  $("#thoughtBox").classList.remove("hidden");
+  drawTraining();
+};
+$("#nextTraining").onclick=loadTraining;
+$("#saveThought").onclick=async()=>{
+  if(!trainingItem)return;
+  try{
+    await api(`/api/learning/mistake/${trainingItem.mistakeId}/thought`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({tag:$("#thoughtTag").value,thought:$("#thoughtText").value})});
+    $("#saveThought").textContent="Saved";
+    setTimeout(()=>$("#saveThought").textContent="Save reflection",1000);
+    loadProfile();
+  }catch(e){alert(e.message)}
+};
+
+
+window.rateUnderstanding=async function(rating,concept){
+  try{
+    await api("/api/learning/feedback",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({rating,concept,source:"postgame"})});
+    loadProgress();
+  }catch(e){console.error(e)}
+};
+
+async function loadProgress(){
+  try{
+    const p=await api("/api/learning/progress");
+    $("#pdGames").textContent=p.gamesReviewed;
+    $("#pdRetention").textContent=p.training.retention+"%";
+    $("#pdTrainingAccuracy").textContent=p.training.accuracy+"%";
+    $("#progressMilestone").innerHTML=`<b>${p.milestone}</b><div class="small">Next checkpoint: ${p.nextCheckpoint} reviewed games.</div>`;
+    const b=p.baseline,r=p.recent;
+    $("#baselineCompare").innerHTML=`
+      <div class="candidate"><b>Blunders per game</b><div class="small">Baseline: ${b.blundersPerGame} · Recent: ${r.blundersPerGame}${p.blunderImprovementPercent!==null?` · Change: ${p.blunderImprovementPercent>0?"+":""}${p.blunderImprovementPercent}% improvement`:""}</div></div>
+      <div class="candidate"><b>Mistakes per game</b><div class="small">Baseline: ${b.mistakesPerGame} · Recent: ${r.mistakesPerGame}</div></div>
+      <div class="candidate"><b>Inaccuracies per game</b><div class="small">Baseline: ${b.inaccuraciesPerGame} · Recent: ${r.inaccuraciesPerGame}</div></div>
+      <div class="candidate"><b>Estimated accuracy</b><div class="small">Baseline: ${b.accuracy}% · Recent: ${r.accuracy}%</div></div>
+    `;
+    $("#currentPriority").innerHTML=`<b>${p.currentPriority}</b><div class="small">This is currently the concept your training data says deserves the most attention.</div>`;
+    const u=p.understanding;
+    $("#understandingStats").innerHTML=`Understood: <b>${u["I understand this"]}</b> · Sort of: <b>${u["Sort of"]}</b> · Still unclear: <b>${u["I still don't get it"]}</b>`;
+    $("#masteryList").innerHTML=p.mastery.length?p.mastery.map(m=>`
+      <div class="candidate">
+        <div class="reviewHead"><b>${m.concept}</b><b>${m.score}%</b></div>
+        <div class="progressTrack" style="margin-top:6px"><div class="progressFill" style="width:${m.score}%"></div></div>
+        <div class="small">${m.correct} correct across ${m.attempts} attempts</div>
+      </div>`).join(""):"No mastery data yet. Train positions from your reviewed games to start measuring it.";
+  }catch(e){
+    $("#progressMilestone").textContent=e.message;
+  }
+}
+
+
+$("#backupData").onclick=async()=>{
+  try{
+    const data=await api("/api/data/backup");
+    const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+    const a=document.createElement("a");
+    a.href=URL.createObjectURL(blob);
+    a.download=`personal-chess-coach-backup-${new Date().toISOString().slice(0,10)}.json`;
+    a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  }catch(e){alert(e.message)}
+};
+
+$("#restoreData").onclick=()=>$("#restoreFile").click();
+
+$("#restoreFile").onchange=async e=>{
+  const file=e.target.files?.[0];
+  if(!file)return;
+  try{
+    const text=await file.text();
+    const data=JSON.parse(text);
+    if(!confirm("Restore this backup? Current local learning data will be replaced by the backup contents."))return;
+    await api("/api/data/restore",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)});
+    alert("Backup restored. Reloading coach.");
+    location.reload();
+  }catch(err){alert("Could not restore backup: "+err.message)}
+};
+
+$("#shutdownBtn").onclick=async()=>{if(!confirm("Shut down Personal Chess Coach?"))return;try{await api("/api/shutdown",{method:"POST"})}catch{}document.body.innerHTML=`<main style="max-width:700px;margin:80px auto;padding:30px;font-family:system-ui;color:#f3f4f6;background:#1a1e22;border-radius:12px"><h1>Personal Chess Coach is shut down</h1><p>The local server and Stockfish are stopped. You can close this tab.</p></main>`}
+checkStatus();loadProfile();loadProgress();setCoords(orientation,$("#fileLabels"),$("#rankLabels"));drawBoard("8/8/8/8/8/8/8/8 w - - 0 1",$("#board"),orientation);drawLab();
+</script>
+</body>
+</html>
