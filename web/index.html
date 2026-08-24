@@ -1,126 +1,682 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Stockfish Browser Test</title>
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>Personal Chess Coach - Browser Engine Test</title>
+
   <style>
     body {
       font-family: Arial, sans-serif;
-      max-width: 800px;
+      max-width: 900px;
       margin: 40px auto;
       padding: 0 20px;
       background: #111;
       color: #eee;
     }
 
+    h1,
+    h2 {
+      margin-bottom: 12px;
+    }
+
+    p {
+      line-height: 1.5;
+    }
+
     button {
       padding: 10px 16px;
+      margin-right: 8px;
+      margin-bottom: 8px;
       font-size: 16px;
       cursor: pointer;
+      background: #2b3137;
+      color: white;
+      border: 1px solid #555;
+      border-radius: 6px;
+    }
+
+    button:hover {
+      background: #363d44;
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+
+    .status {
+      margin: 16px 0;
+      padding: 12px;
+      background: #1d1d1d;
+      border-radius: 8px;
+      font-weight: bold;
+    }
+
+    .result {
+      margin-top: 20px;
+      padding: 16px;
+      background: #1d1d1d;
+      border-radius: 8px;
+      display: none;
+    }
+
+    .result-row {
+      margin-bottom: 10px;
+    }
+
+    .label {
+      color: #aaa;
+      font-size: 13px;
+      text-transform: uppercase;
+    }
+
+    .value {
+      font-size: 20px;
+      font-weight: bold;
+      margin-top: 2px;
+    }
+
+    .pv {
+      font-family: Consolas, monospace;
+      font-size: 15px;
+      line-height: 1.6;
+      word-break: break-word;
     }
 
     pre {
       background: #1d1d1d;
       padding: 16px;
       border-radius: 8px;
-      min-height: 250px;
+      min-height: 180px;
+      max-height: 350px;
       overflow: auto;
       white-space: pre-wrap;
+      word-break: break-word;
     }
 
-    .status {
-      margin: 16px 0;
-      font-weight: bold;
+    .success {
+      color: #86efac;
+    }
+
+    .error {
+      color: #fca5a5;
     }
   </style>
 </head>
+
 <body>
-  <h1>Stockfish Browser Engine Test</h1>
+
+  <h1>
+    Personal Chess Coach
+  </h1>
 
   <p>
-    This page will test whether Stockfish can run entirely inside the browser.
+    Browser Stockfish engine test using our
+    StockfishEngine JavaScript wrapper.
   </p>
 
-  <div class="status" id="status">
+
+  <div
+    id="status"
+    class="status"
+  >
     Engine not started.
   </div>
 
+
   <button id="startButton">
-    Start Stockfish
+    Start Engine
   </button>
 
-  <button id="analyzeButton" disabled>
+  <button
+    id="analyzeButton"
+    disabled
+  >
     Analyze Starting Position
   </button>
 
-  <h2>Engine Output</h2>
+  <button
+    id="stopButton"
+    disabled
+  >
+    Stop Engine
+  </button>
+
+
+  <div
+    id="result"
+    class="result"
+  >
+
+    <h2>
+      Analysis Result
+    </h2>
+
+
+    <div class="result-row">
+
+      <div class="label">
+        Best move
+      </div>
+
+      <div
+        id="bestMove"
+        class="value"
+      >
+        -
+      </div>
+
+    </div>
+
+
+    <div class="result-row">
+
+      <div class="label">
+        Evaluation
+      </div>
+
+      <div
+        id="evaluation"
+        class="value"
+      >
+        -
+      </div>
+
+    </div>
+
+
+    <div class="result-row">
+
+      <div class="label">
+        Depth
+      </div>
+
+      <div
+        id="depth"
+        class="value"
+      >
+        -
+      </div>
+
+    </div>
+
+
+    <div class="result-row">
+
+      <div class="label">
+        Analysis time
+      </div>
+
+      <div
+        id="analysisTime"
+        class="value"
+      >
+        -
+      </div>
+
+    </div>
+
+
+    <div class="result-row">
+
+      <div class="label">
+        Nodes searched
+      </div>
+
+      <div
+        id="nodes"
+        class="value"
+      >
+        -
+      </div>
+
+    </div>
+
+
+    <div class="result-row">
+
+      <div class="label">
+        Principal variation
+      </div>
+
+      <div
+        id="pv"
+        class="pv"
+      >
+        -
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <h2>
+    Engine Log
+  </h2>
 
   <pre id="output"></pre>
 
-  <script>
-    let stockfish = null;
-    let ready = false;
 
-    const statusEl = document.getElementById("status");
-    const outputEl = document.getElementById("output");
-    const startButton = document.getElementById("startButton");
-    const analyzeButton = document.getElementById("analyzeButton");
+  <!--
+    Load our wrapper first.
+
+    The wrapper itself will create the
+    Stockfish Web Worker.
+  -->
+  <script src="./stockfish-engine.js"></script>
+
+
+  <script>
+
+    // =====================================================
+    // PAGE ELEMENTS
+    // =====================================================
+
+    const statusEl =
+      document.getElementById(
+        "status"
+      );
+
+    const outputEl =
+      document.getElementById(
+        "output"
+      );
+
+    const resultEl =
+      document.getElementById(
+        "result"
+      );
+
+    const startButton =
+      document.getElementById(
+        "startButton"
+      );
+
+    const analyzeButton =
+      document.getElementById(
+        "analyzeButton"
+      );
+
+    const stopButton =
+      document.getElementById(
+        "stopButton"
+      );
+
+
+    const bestMoveEl =
+      document.getElementById(
+        "bestMove"
+      );
+
+    const evaluationEl =
+      document.getElementById(
+        "evaluation"
+      );
+
+    const depthEl =
+      document.getElementById(
+        "depth"
+      );
+
+    const analysisTimeEl =
+      document.getElementById(
+        "analysisTime"
+      );
+
+    const nodesEl =
+      document.getElementById(
+        "nodes"
+      );
+
+    const pvEl =
+      document.getElementById(
+        "pv"
+      );
+
+
+    // =====================================================
+    // LOGGING
+    // =====================================================
 
     function log(message) {
-      outputEl.textContent += message + "\n";
-      outputEl.scrollTop = outputEl.scrollHeight;
+
+      outputEl.textContent +=
+        String(message) + "\n";
+
+      outputEl.scrollTop =
+        outputEl.scrollHeight;
+
     }
 
-    startButton.addEventListener("click", () => {
-      if (stockfish) {
-        return;
+
+    // =====================================================
+    // CREATE ENGINE WRAPPER
+    // =====================================================
+
+    const engine =
+      new StockfishEngine({
+
+        workerUrl:
+          "./stockfish-18-lite-single.js",
+
+
+        onStatus:
+          (message) => {
+
+            statusEl.textContent =
+              message;
+
+          },
+
+
+        onRawMessage:
+          (message) => {
+
+            // We still show the raw output
+            // during development so debugging
+            // remains easy.
+
+            log(message);
+
+          }
+
+      });
+
+
+    // =====================================================
+    // START ENGINE
+    // =====================================================
+
+    startButton.addEventListener(
+      "click",
+      async () => {
+
+        outputEl.textContent = "";
+
+        resultEl.style.display =
+          "none";
+
+
+        statusEl.textContent =
+          "Starting Stockfish...";
+
+
+        try {
+
+          await engine.start();
+
+
+          statusEl.textContent =
+            "Stockfish ready.";
+
+          statusEl.className =
+            "status success";
+
+
+          startButton.disabled =
+            true;
+
+          analyzeButton.disabled =
+            false;
+
+          stopButton.disabled =
+            false;
+
+
+          log(
+            "----------------------------------------"
+          );
+
+          log(
+            "SUCCESS: Engine wrapper initialized."
+          );
+
+
+        } catch (error) {
+
+          statusEl.textContent =
+            "Stockfish failed to start.";
+
+          statusEl.className =
+            "status error";
+
+
+          log(
+            "ENGINE START ERROR"
+          );
+
+          log(
+            String(
+              error?.message ||
+              error
+            )
+          );
+
+
+          console.error(
+            error
+          );
+
+        }
+
       }
+    );
 
-      statusEl.textContent = "Starting Stockfish...";
 
-      stockfish = new Worker("./stockfish-18-lite-single.js");
+    // =====================================================
+    // ANALYZE STARTING POSITION
+    // =====================================================
 
-      stockfish.onmessage = (event) => {
-        const message = event.data;
+    analyzeButton.addEventListener(
+      "click",
+      async () => {
 
-        log(message);
+        analyzeButton.disabled =
+          true;
 
-        if (message === "uciok") {
-          stockfish.postMessage("isready");
+        resultEl.style.display =
+          "none";
+
+        outputEl.textContent = "";
+
+
+        try {
+
+          const result =
+            await engine
+              .analyzeStartPosition(
+                15
+              );
+
+
+          console.log(
+            "Structured Stockfish result:",
+            result
+          );
+
+
+          // ---------------------------------------------
+          // BEST MOVE
+          // ---------------------------------------------
+
+          bestMoveEl.textContent =
+            result.bestMove ||
+            "-";
+
+
+          // ---------------------------------------------
+          // EVALUATION
+          // ---------------------------------------------
+
+          if (
+            result.score?.type ===
+            "cp"
+          ) {
+
+            const value =
+              result.score.pawns;
+
+
+            evaluationEl.textContent =
+              (
+                value > 0
+                  ? "+"
+                  : ""
+              ) +
+              value.toFixed(2);
+
+          } else if (
+            result.score?.type ===
+            "mate"
+          ) {
+
+            evaluationEl.textContent =
+              "Mate " +
+              result.score.mate;
+
+          } else {
+
+            evaluationEl.textContent =
+              "-";
+
+          }
+
+
+          // ---------------------------------------------
+          // DEPTH
+          // ---------------------------------------------
+
+          depthEl.textContent =
+            result.depth;
+
+
+          // ---------------------------------------------
+          // TIME
+          // ---------------------------------------------
+
+          analysisTimeEl.textContent =
+            result.timeMs +
+            " ms";
+
+
+          // ---------------------------------------------
+          // NODES
+          // ---------------------------------------------
+
+          nodesEl.textContent =
+            result.nodes
+              .toLocaleString();
+
+
+          // ---------------------------------------------
+          // PRINCIPAL VARIATION
+          // ---------------------------------------------
+
+          pvEl.textContent =
+            result.pv.length
+              ? result.pv.join(" ")
+              : "-";
+
+
+          // ---------------------------------------------
+          // SHOW RESULTS
+          // ---------------------------------------------
+
+          resultEl.style.display =
+            "block";
+
+
+          statusEl.textContent =
+            "Analysis complete.";
+
+          statusEl.className =
+            "status success";
+
+
+        } catch (error) {
+
+          statusEl.textContent =
+            "Analysis failed.";
+
+          statusEl.className =
+            "status error";
+
+
+          log(
+            "ANALYSIS ERROR"
+          );
+
+          log(
+            String(
+              error?.message ||
+              error
+            )
+          );
+
+
+          console.error(
+            error
+          );
+
+        } finally {
+
+          analyzeButton.disabled =
+            false;
+
         }
 
-        if (message === "readyok") {
-          ready = true;
-          statusEl.textContent = "Stockfish ready.";
-          analyzeButton.disabled = false;
-        }
-
-        if (message.startsWith("bestmove")) {
-          statusEl.textContent = "Analysis complete.";
-        }
-      };
-
-      stockfish.onerror = (error) => {
-        statusEl.textContent = "Stockfish failed to start.";
-        log("ERROR: " + error.message);
-      };
-
-      stockfish.postMessage("uci");
-    });
-
-    analyzeButton.addEventListener("click", () => {
-      if (!stockfish || !ready) {
-        return;
       }
+    );
 
-      outputEl.textContent = "";
 
-      statusEl.textContent = "Analyzing...";
+    // =====================================================
+    // STOP ENGINE
+    // =====================================================
 
-      stockfish.postMessage("position startpos");
-      stockfish.postMessage("go depth 15");
-    });
+    stopButton.addEventListener(
+      "click",
+      () => {
+
+        engine.destroy();
+
+
+        statusEl.textContent =
+          "Stockfish stopped.";
+
+        statusEl.className =
+          "status";
+
+
+        startButton.disabled =
+          false;
+
+        analyzeButton.disabled =
+          true;
+
+        stopButton.disabled =
+          true;
+
+
+        log(
+          "----------------------------------------"
+        );
+
+        log(
+          "Engine terminated."
+        );
+
+      }
+    );
+
+
   </script>
+
 </body>
 </html>
