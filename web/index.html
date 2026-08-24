@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Stockfish Browser Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 0 20px;
+      background: #111;
+      color: #eee;
+    }
+
+    button {
+      padding: 10px 16px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    pre {
+      background: #1d1d1d;
+      padding: 16px;
+      border-radius: 8px;
+      min-height: 250px;
+      overflow: auto;
+      white-space: pre-wrap;
+    }
+
+    .status {
+      margin: 16px 0;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>Stockfish Browser Engine Test</h1>
+
+  <p>
+    This page will test whether Stockfish can run entirely inside the browser.
+  </p>
+
+  <div class="status" id="status">
+    Engine not started.
+  </div>
+
+  <button id="startButton">
+    Start Stockfish
+  </button>
+
+  <button id="analyzeButton" disabled>
+    Analyze Starting Position
+  </button>
+
+  <h2>Engine Output</h2>
+
+  <pre id="output"></pre>
+
+  <script>
+    let stockfish = null;
+    let ready = false;
+
+    const statusEl = document.getElementById("status");
+    const outputEl = document.getElementById("output");
+    const startButton = document.getElementById("startButton");
+    const analyzeButton = document.getElementById("analyzeButton");
+
+    function log(message) {
+      outputEl.textContent += message + "\n";
+      outputEl.scrollTop = outputEl.scrollHeight;
+    }
+
+    startButton.addEventListener("click", () => {
+      if (stockfish) {
+        return;
+      }
+
+      statusEl.textContent = "Starting Stockfish...";
+
+      stockfish = new Worker("./stockfish.js");
+
+      stockfish.onmessage = (event) => {
+        const message = event.data;
+
+        log(message);
+
+        if (message === "uciok") {
+          stockfish.postMessage("isready");
+        }
+
+        if (message === "readyok") {
+          ready = true;
+          statusEl.textContent = "Stockfish ready.";
+          analyzeButton.disabled = false;
+        }
+
+        if (message.startsWith("bestmove")) {
+          statusEl.textContent = "Analysis complete.";
+        }
+      };
+
+      stockfish.onerror = (error) => {
+        statusEl.textContent = "Stockfish failed to start.";
+        log("ERROR: " + error.message);
+      };
+
+      stockfish.postMessage("uci");
+    });
+
+    analyzeButton.addEventListener("click", () => {
+      if (!stockfish || !ready) {
+        return;
+      }
+
+      outputEl.textContent = "";
+
+      statusEl.textContent = "Analyzing...";
+
+      stockfish.postMessage("position startpos");
+      stockfish.postMessage("go depth 15");
+    });
+  </script>
+</body>
+</html>
