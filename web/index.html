@@ -79,7 +79,7 @@
 
       statusEl.textContent = "Starting Stockfish...";
 
-      stockfish = new Worker("./stockfish.js");
+      stockfish = new Worker("./stockfish-18-lite-single.js");
 
       stockfish.onmessage = (event) => {
         const message = event.data;
